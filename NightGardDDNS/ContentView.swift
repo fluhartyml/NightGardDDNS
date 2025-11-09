@@ -40,8 +40,20 @@ struct ContentView: View {
                 VStack(spacing: 15) {
                     StatusRow(label: "Status", value: ddnsService.lastStatus)
 
-                    if let ip = ddnsService.currentIP {
-                        StatusRow(label: "Current IP", value: ip)
+                    if let localIP = ddnsService.localIP {
+                        ClickableStatusRow(label: "Local IP", value: localIP, url: "http://\(localIP)")
+                    }
+
+                    if let publicIP = ddnsService.currentIP {
+                        ClickableStatusRow(label: "Public IP", value: publicIP, url: "http://\(publicIP)")
+                    }
+
+                    if !ddnsService.domain.isEmpty {
+                        ClickableStatusRow(
+                            label: "Domain",
+                            value: "\(ddnsService.domain).duckdns.org",
+                            url: "http://\(ddnsService.domain).duckdns.org"
+                        )
                     }
 
                     if let lastUpdate = ddnsService.lastUpdateTime {
@@ -116,6 +128,38 @@ struct StatusRow: View {
             Text(value)
                 .foregroundColor(valueColor)
                 .fontWeight(.semibold)
+        }
+    }
+}
+
+struct ClickableStatusRow: View {
+    let label: String
+    let value: String
+    let url: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundColor(.gray)
+            Spacer()
+            Button(action: {
+                if let url = URL(string: url) {
+                    NSWorkspace.shared.open(url)
+                }
+            }) {
+                Text(value)
+                    .foregroundColor(.cyan)
+                    .fontWeight(.semibold)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovered in
+                if isHovered {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
         }
     }
 }

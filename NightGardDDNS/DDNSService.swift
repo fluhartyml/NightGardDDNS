@@ -7,20 +7,47 @@
 //
 
 import Foundation
+import Network
 
 @MainActor
+@Observable
 public class DDNSService {
     private var updateTimer: Timer?
-    private(set) public var isRunning = false
-    private(set) public var lastUpdateTime: Date?
-    private(set) public var lastStatus: String = "Idle"
-    private(set) public var currentIP: String?
+    public var isRunning = false
+    public var lastUpdateTime: Date?
+    public var lastStatus: String = "Idle"
+    public var currentIP: String?
+    public var localIP: String?
 
-    public var domain: String = ""
-    public var token: String = ""
-    public var updateInterval: TimeInterval = 300 // 5 minutes default
+    public var domain: String = "" {
+        didSet {
+            UserDefaults.standard.set(domain, forKey: "ddns_domain")
+        }
+    }
 
-    public init() {}
+    public var token: String = "" {
+        didSet {
+            UserDefaults.standard.set(token, forKey: "ddns_token")
+        }
+    }
+
+    public var updateInterval: TimeInterval = 300 {
+        didSet {
+            UserDefaults.standard.set(updateInterval, forKey: "ddns_interval")
+        }
+    }
+
+    public init() {
+        // Load saved settings
+        domain = UserDefaults.standard.string(forKey: "ddns_domain") ?? ""
+        token = UserDefaults.standard.string(forKey: "ddns_token") ?? ""
+        updateInterval = UserDefaults.standard.double(forKey: "ddns_interval")
+        if updateInterval == 0 {
+            updateInterval = 300 // Default to 5 minutes
+        }
+
+        detectLocalIP()
+    }
 
     public func start() {
         guard !isRunning else { return }
@@ -120,5 +147,40 @@ public class DDNSService {
         }
 
         return false
+    }
+
+    private func detectLocalIP() {
+        // Use BSD sockets to get local IP
+        var address: String?
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+
+        guard getifaddrs(&ifaddr) == 0 else {
+            localIP = nil
+            return
+        }
+        defer { freeifaddrs(ifaddr) }
+
+        var ptr = ifaddr
+        while let interface = ptr?.pointee {
+            defer { ptr = interface.ifa_next }
+
+            // Check address family is IPv4
+            guard interface.ifa_addr.pointee.sa_family == UInt8(AF_INET) else { continue }
+
+            // Get interface name - check for common network interfaces
+            let name = String(cString: interface.ifa_name)
+            guard name == "en0" || name == "en1" else { continue }
+
+            // Get IP address
+            var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
+                          &hostname, socklen_t(hostname.count),
+                          nil, 0, NI_NUMERICHOST) == 0 {
+                address = String(cString: hostname)
+                break
+            }
+        }
+
+        localIP = address
     }
 }
