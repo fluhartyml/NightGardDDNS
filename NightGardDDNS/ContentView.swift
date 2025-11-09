@@ -8,14 +8,115 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var showSettings = false
+    @State private var ddnsService = DDNSService()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        ZStack {
+            // Dark background
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 30) {
+                // Blue neon knight
+                Text("♞")
+                    .font(.system(size: 120))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .cyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: .blue.opacity(0.8), radius: 20, x: 0, y: 0)
+                    .shadow(color: .cyan.opacity(0.6), radius: 40, x: 0, y: 0)
+
+                // NightGard branding
+                Text("NightGard DDNS")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+
+                // Status section
+                VStack(spacing: 15) {
+                    StatusRow(label: "Status", value: ddnsService.lastStatus)
+
+                    if let ip = ddnsService.currentIP {
+                        StatusRow(label: "Current IP", value: ip)
+                    }
+
+                    if let lastUpdate = ddnsService.lastUpdateTime {
+                        StatusRow(label: "Last Update", value: formatDate(lastUpdate))
+                    }
+
+                    StatusRow(
+                        label: "Service",
+                        value: ddnsService.isRunning ? "Running" : "Stopped",
+                        valueColor: ddnsService.isRunning ? .green : .red
+                    )
+                }
+                .padding()
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(15)
+
+                // Control buttons
+                HStack(spacing: 20) {
+                    Button(action: {
+                        showSettings = true
+                    }) {
+                        Label("Settings", systemImage: "gear")
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue.opacity(0.3))
+                            .cornerRadius(10)
+                    }
+
+                    Button(action: {
+                        if ddnsService.isRunning {
+                            ddnsService.stop()
+                        } else {
+                            ddnsService.start()
+                        }
+                    }) {
+                        Label(
+                            ddnsService.isRunning ? "Stop" : "Start",
+                            systemImage: ddnsService.isRunning ? "stop.circle" : "play.circle"
+                        )
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(ddnsService.isRunning ? Color.red.opacity(0.3) : Color.green.opacity(0.3))
+                        .cornerRadius(10)
+                    }
+                }
+            }
+            .padding()
         }
-        .padding()
+        .sheet(isPresented: $showSettings) {
+            SettingsView(ddnsService: $ddnsService)
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
+    }
+}
+
+struct StatusRow: View {
+    let label: String
+    let value: String
+    var valueColor: Color = .cyan
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundColor(.gray)
+            Spacer()
+            Text(value)
+                .foregroundColor(valueColor)
+                .fontWeight(.semibold)
+        }
     }
 }
 
