@@ -22,6 +22,9 @@ struct SettingsView: View {
                     SecureField("Token", text: $ddnsService.token)
                         .textContentType(.password)
 
+                    Link("Get DuckDNS Domain & Token", destination: URL(string: "https://www.duckdns.org")!)
+                        .foregroundColor(.blue)
+
                     Stepper("Update Interval: \(Int(ddnsService.updateInterval))s",
                             value: $ddnsService.updateInterval,
                             in: 60...3600,
